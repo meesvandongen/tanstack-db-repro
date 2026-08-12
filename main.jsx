@@ -1,22 +1,13 @@
-import { StrictMode } from 'react';
+import { StrictMode, Suspense, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   BasicIndex,
+  createCollection,
   eq,
   materialize,
-  createCollection,
 } from '@tanstack/db';
 import { electricCollectionOptions } from '@tanstack/electric-db-collection';
 import { useLiveQuery, useLiveSuspenseQuery } from '@tanstack/react-db';
-import {
-  Link,
-  Navigate,
-  Outlet,
-  RouterProvider,
-  createBrowserRouter,
-  useParams,
-} from 'react-router';
-import './styles.css';
 
 const documents = sourceCollection('documents');
 const folderMemberships = sourceCollection('folder-memberships');
@@ -43,56 +34,63 @@ function sourceCollection(id) {
   });
 }
 
-function Home() {
+function App() {
+  const [screen, setScreen] = useState({ name: 'home' });
+
+  if (screen.name === 'home') {
+    return (
+      <main>
+        <h1>Home</h1>
+        <button onClick={() => setScreen({ name: 'documents' })}>
+          Documents
+        </button>
+      </main>
+    );
+  }
+
+  if (screen.name === 'documents') {
+    return (
+      <main>
+        <h1>Documents</h1>
+        <button onClick={() => setScreen({ name: 'document', id: 'document-a' })}>
+          Document A
+        </button>
+        <button onClick={() => setScreen({ name: 'document', id: 'document-b' })}>
+          Document B
+        </button>
+      </main>
+    );
+  }
+
+  const documentName = screen.id === 'document-a' ? 'Document A' : 'Document B';
+
   return (
-    <main className="page">
-      <h1>Home</h1>
-      <Link className="top-link" to="/documents">
+    <main>
+      <h1>{documentName}</h1>
+      <button onClick={() => setScreen({ name: 'documents' })}>
         Documents
-      </Link>
+      </button>
+      <button onClick={() => setScreen({ name: 'details', id: screen.id })}>
+        Details
+      </button>
+      <button onClick={() => setScreen({ name: 'tags', id: screen.id })}>
+        Tags
+      </button>
+      {screen.name === 'details' && <p>Details for {documentName}</p>}
+      {screen.name === 'tags' && (
+        <Suspense fallback={<p>Loading tags...</p>}>
+          <DocumentTags documentId={screen.id} />
+        </Suspense>
+      )}
     </main>
   );
-}
-
-function Documents() {
-  return (
-    <main className="page">
-      <h1>Documents</h1>
-      <nav className="document-list" aria-label="Documents">
-        <Link to="/documents/document-a">Document A</Link>
-        <Link to="/documents/document-b">Document B</Link>
-      </nav>
-    </main>
-  );
-}
-
-function DocumentLayout() {
-  const { id } = useParams();
-  const name = id === 'document-a' ? 'Document A' : 'Document B';
-  return (
-    <main className="page">
-      <h1>{name}</h1>
-      <Link className="top-link" to="/documents">
-        Documents
-      </Link>
-      <nav className="sub-navigation" aria-label="Document sections">
-        <Link to={`/documents/${id}/details`}>Details</Link>
-        <Link to={`/documents/${id}/tags`}>Tags</Link>
-      </nav>
-      <Outlet />
-    </main>
-  );
-}
-
-function DocumentDetails() {
-  const { id } = useParams();
-  return <p>Details for {id}</p>;
 }
 
 function DocumentTags({ documentId }) {
   if (window.__reproUseNonSuspense) {
     return <DocumentTagsWithoutSuspense documentId={documentId} />;
   }
+
   return <DocumentTagsWithSuspense documentId={documentId} />;
 }
 
@@ -116,31 +114,10 @@ function DocumentTagsWithoutSuspense({ documentId }) {
 
 function DocumentTagsContent({ document }) {
   return (
-    <section className="hierarchy" data-testid="document-tags">
-      <div className="hierarchy-heading">
-        <div>
-          <p className="eyebrow">Document hierarchy</p>
-          <h2>Tags</h2>
-        </div>
-        {document && <span className="document-badge">{document.title}</span>}
-      </div>
-      {document ? (
-        <ul className="folder-list">
-          {document.folders.map((folder) => (
-            <li className="folder-node" key={folder.id}>
-              <h3>{folder.name}</h3>
-              <ul className="tag-list">
-                {folder.tags.map((tag) => (
-                  <li className="tag-node" key={tag.id}>
-                    {tag.name}
-                  </li>
-                ))}
-              </ul>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p>Loading tags...</p>
+    <section data-testid="document-tags">
+      <h2>Tags</h2>
+      {document?.folders.flatMap((folder) =>
+        folder.tags.map((tag) => <p key={tag.id}>{tag.name}</p>),
       )}
     </section>
   );
@@ -157,8 +134,7 @@ function documentTagsQuery(q, documentId) {
           .from({ membership: folderMemberships })
           .innerJoin(
             { folder: folders },
-            ({ membership, folder }) =>
-              eq(membership.folderId, folder.id),
+            ({ membership, folder }) => eq(membership.folderId, folder.id),
           )
           .where(({ membership }) => eq(membership.documentId, document.id))
           .select(({ folder }) => ({
@@ -175,27 +151,8 @@ function documentTagsQuery(q, documentId) {
     .findOne();
 }
 
-function DocumentTagsRoute() {
-  const { id } = useParams();
-  return <DocumentTags documentId={id} />;
-}
-
-const router = createBrowserRouter([
-  { path: '/', element: <Home /> },
-  { path: '/documents', element: <Documents /> },
-  {
-    path: '/documents/:id',
-    element: <DocumentLayout />,
-    children: [
-      { index: true, element: <Navigate to="details" replace /> },
-      { path: 'details', element: <DocumentDetails /> },
-      { path: 'tags', element: <DocumentTagsRoute /> },
-    ],
-  },
-]);
-
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <App />
   </StrictMode>,
 );

@@ -1,25 +1,21 @@
-import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(
   new URL('./package.json', import.meta.url),
 );
 const { chromium } = require('@playwright/test');
-
 const directory = fileURLToPath(new URL('.', import.meta.url));
 const port = Number(process.env.REPRO_PORT ?? 4310);
 const server = spawn(
   process.execPath,
   [
-    `${directory}/node_modules/vite/bin/vite.js`,
+    `${directory}node_modules/vite/bin/vite.js`,
     '--config',
-    `${directory}/vite.config.mjs`,
+    `${directory}vite.config.mjs`,
   ],
-  {
-    cwd: directory,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  },
+  { cwd: directory, stdio: ['ignore', 'pipe', 'pipe'] },
 );
 
 const output = [];
@@ -35,26 +31,24 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
-  const browser = await chromium.launch({ headless: true });
   const runSequence = async (page, label) => {
     await page.goto(`http://127.0.0.1:${port}/`);
-    await page.getByRole('link', { name: 'Documents' }).click();
+    await page.getByRole('button', { name: 'Documents' }).click();
 
     for (const document of ['Document A', 'Document B']) {
-      await page.getByRole('link', { name: document }).click();
-      await page.getByRole('link', { name: 'Details' }).click();
-      await page.getByRole('link', { name: 'Tags' }).click();
+      await page.getByRole('button', { name: document }).click();
+      await page.getByRole('button', { name: 'Details' }).click();
+      await page.getByRole('button', { name: 'Tags' }).click();
       await page.waitForTimeout(1000);
       const count = await page.getByTestId('document-tags').count();
       console.log(label, document, count);
-      if (count !== 1) {
-        return false;
-      }
-      await page.getByRole('link', { name: 'Documents' }).click();
+      if (count !== 1) return false;
+      await page.getByRole('button', { name: 'Documents' }).click();
     }
     return true;
   };
 
+  const browser = await chromium.launch({ headless: true });
   const suspensePage = await browser.newPage();
   if (await runSequence(suspensePage, 'useLiveSuspenseQuery')) {
     throw new Error('The suspense reproduction unexpectedly passed');
@@ -67,11 +61,8 @@ try {
   if (!(await runSequence(nonSuspensePage, 'useLiveQuery'))) {
     throw new Error('The non-suspense control unexpectedly failed');
   }
-
   await browser.close();
 } finally {
   server.kill('SIGTERM');
-  if (output.length > 0) {
-    process.stderr.write(output.join(''));
-  }
+  if (output.length > 0) process.stderr.write(output.join(''));
 }

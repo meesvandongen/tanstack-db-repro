@@ -31,16 +31,8 @@ export default {
               { id: 'folder-b', name: 'Folder B' },
             ],
             'document-tags': [
-              {
-                id: 'tag-a',
-                folderId: 'folder-a',
-                name: 'Tag A',
-              },
-              {
-                id: 'tag-b',
-                folderId: 'folder-b',
-                name: 'Tag B',
-              },
+              { id: 'tag-a', folderId: 'folder-a', name: 'Tag A' },
+              { id: 'tag-b', folderId: 'folder-b', name: 'Tag B' },
             ],
           }[table];
 
