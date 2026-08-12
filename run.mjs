@@ -8,6 +8,7 @@ const require = createRequire(
 const { chromium } = require('@playwright/test');
 
 const directory = fileURLToPath(new URL('.', import.meta.url));
+const port = Number(process.env.REPRO_PORT ?? 4310);
 const server = spawn(
   process.execPath,
   [
@@ -28,7 +29,7 @@ server.stderr.on('data', (chunk) => output.push(String(chunk)));
 try {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     try {
-      const response = await fetch('http://127.0.0.1:4310/');
+      const response = await fetch(`http://127.0.0.1:${port}/`);
       if (response.ok) break;
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -36,7 +37,7 @@ try {
 
   const browser = await chromium.launch({ headless: true });
   const runSequence = async (page, label) => {
-    await page.goto('http://127.0.0.1:4310/');
+    await page.goto(`http://127.0.0.1:${port}/`);
     await page.getByRole('link', { name: 'Documents' }).click();
 
     for (const document of ['Document A', 'Document B']) {

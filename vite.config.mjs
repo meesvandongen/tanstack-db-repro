@@ -79,7 +79,7 @@ export default {
   ],
   server: {
     host: '127.0.0.1',
-    port: 4310,
+    port: Number(process.env.REPRO_PORT ?? 4310),
     strictPort: true,
   },
 };
