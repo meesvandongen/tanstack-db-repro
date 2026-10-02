@@ -1,10 +1,11 @@
-# `useLiveSuspenseQuery` leaves a derived collection pending after parameterized nested-query re-evaluation
+# `useLiveSuspenseQuery` does not resolve after an optimistic create and immediate parameterized query
 
 ## Describe the bug
 
-A derived collection created by a parameterized nested query renders for its
-first document but remains pending when the parameter changes to a second
-document. The identical query succeeds with `useLiveQuery`.
+After an item is optimistically inserted into an Electric-backed collection,
+an immediate transition to a parameterized detail view can leave the
+`useLiveSuspenseQuery` view unresolved. The identical flow succeeds with
+`useLiveQuery`.
 
 ## To reproduce
 
@@ -13,55 +14,43 @@ pnpm install
 pnpm run repro
 ```
 
-The example displays a Documents view and a Tags view. The Tags view evaluates
-a query for the selected document:
+The example performs:
 
-```text
-Document -> folder membership -> folder -> tag
-```
-
-The test changes the selected document through the UI and performs:
-
-1. Select Documents.
-2. Select Document A.
-3. Select Details, then Tags.
-4. Return to Documents.
-5. Select Document B.
-6. Select Details, then Tags.
+1. Open the create view.
+2. Click `Save`, which optimistically inserts a report.
+3. Immediately render the parameterized `Permissions` view for that report.
 
 Output:
 
 ```text
-useLiveSuspenseQuery Document A 1
-useLiveSuspenseQuery Document B 0
-useLiveQuery Document A 1
-useLiveQuery Document B 1
+useLiveSuspenseQuery 0
+useLiveQuery 1
 ```
 
-The number is the count of rendered tag views. The first two lines use
-`useLiveSuspenseQuery`; the last two are the `useLiveQuery` control.
+The number is the count of rendered permission views. The command exits
+nonzero when the Suspense variant fails to render.
 
 ## Expected behavior
 
-Both Document A and Document B should render their tag view.
+The created report should be available to the parameterized query immediately
+after the optimistic insert.
 
 ## Actual behavior
 
-The second `useLiveSuspenseQuery` view does not render within the test
-interval, while the non-Suspense control renders both views.
+`useLiveSuspenseQuery` does not render the created report, while the identical
+query using `useLiveQuery` does render it.
 
 ## Setup
 
-The query uses `@tanstack/db`, `@tanstack/electric-db-collection`, and
-`@tanstack/react-db` with a deterministic, local Electric-compatible shape
-endpoint. View changes are local React state changes triggered by buttons. The
-same query is run once with `useLiveSuspenseQuery` and once with `useLiveQuery`
-as a control.
+The reproduction uses React state, an optimistic collection insert, a
+parameterized `findOne()` query, and a deterministic local
+Electric-compatible shape endpoint. The domain is intentionally generic:
+reports and permissions.
 
 Versions:
 
-- `@tanstack/db`: `0.6.17`
-- `@tanstack/electric-db-collection`: `0.3.15`
-- `@tanstack/react-db`: `0.1.95`
+- `@tanstack/db`: `0.11.1`
+- `@tanstack/electric-db-collection`: `0.5.2`
+- `@tanstack/react-db`: `0.5.1`
 - `react`: `19.2.8`
-- `vite`: `8.2.0`
+- `vite`: `8.3.2`
