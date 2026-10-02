@@ -3,8 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "repro": "node create-navigation-repro/run.mjs"
+    "repro": "node create-navigation-repro/run.mjs",
+    "repro:service-account": "node service-account-repro/run.mjs",
+    "test:fake": "node --test --test-force-exit fake-electric/contract.test.mjs"
   },
   "dependencies": {
     "@tanstack/db": "0.11.1",
@@ -14,6 +15,7 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@electric-sql/client": "1.5.25",
     "@playwright/test": "1.62.1",
     "vite": "8.3.2"
   }
